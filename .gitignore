@@ -3,9 +3,8 @@
 *.bin
 *.pt
 
-# Data
-*.json
-*.csv
+# Index files
+index/
 
 # Python
 __pycache__/
@@ -16,4 +15,5 @@ venv/
 *.egg-info/
 
 # OS
-.DS_Storellama.cpp/
+.DS_Store
+llama.cpp/
