@@ -1,16 +1,27 @@
 import json
 import os
-import re
-import inference
-from inference import run_model
-from prompts import base_prompt, structured_rag_prompt
+import sys
+from tqdm import tqdm
+from inference import load_model, run_model
+from prompts import base_prompt, rag_prompt
+from rag.retrieve import retrieve
+from evaluate import score_response
 
-print("USING INFERENCE FILE:", inference.__file__)
+MODELS = {
+    "TinyLlama": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+    "Qwen1.5B": "Qwen/Qwen2.5-1.5B-Instruct",
+    "Gemma2B": "google/gemma-2-2b-it",
+    "Phi2": "microsoft/phi-2",
+    "Phi3Mini": "microsoft/Phi-3-mini-4k-instruct",
+    "Mistral7B": "mistralai/Mistral-7B-Instruct-v0.3"
+}
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
-
-PHI_MODEL = os.path.join(ROOT, "models", "Phi-3-mini-4k-instruct-q4.gguf")
-TINY_MODEL = os.path.join(ROOT, "models", "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf")
+DATA = {
+    "easy": os.path.join(ROOT, "code", "data", "mathdial_bridge.json"),
+    "hard": os.path.join(ROOT, "code", "data", "mathdial_bridge_hard.json")
+}
+RESULTS_PATH = os.path.join(ROOT, "code", "results", "results.json")
 
 
 def load_dataset(path):
@@ -18,77 +29,90 @@ def load_dataset(path):
         return json.load(f)
 
 
-def extract_final_answer(reference_solution):
-    match = re.search(r"####\s*(-?\d+(?:\.\d+)?)", reference_solution)
-    if match:
-        return match.group(1).strip()
+def run_experiment(model, tokenizer, model_name, dataset, split, mode):
+    answer_correct = 0
+    explanation_correct = 0
+    both_correct = 0
+    answer_only = 0
+    total = len(dataset)
 
-    lines = [line.strip() for line in reference_solution.strip().split("\n") if line.strip()]
-    if not lines:
-        return None
+    print(f"\nRunning {model_name} | {split} | {mode}")
 
-    last_line = lines[-1]
-    numbers = re.findall(r"-?\d+(?:\.\d+)?", last_line)
-    if numbers:
-        return numbers[-1]
-
-    return None
-
-
-def extract_model_answer(text):
-    match = re.search(r"FINAL ANSWER:\s*(-?\d+(?:\.\d+)?)", text, re.IGNORECASE)
-    if match:
-        return match.group(1).strip()
-    return None
-
-
-def run_experiment(dataset_path, model_path, mode="base", limit=5, debug=False):
-    data = load_dataset(dataset_path)
-    total_score = 0
-
-    print(f"\nRunning {mode} mode on {os.path.basename(model_path)}")
-
-    for i, example in enumerate(data[:limit]):
+    for example in tqdm(dataset):
         problem = example["problem"]
         reference = example["reference_solution"]
 
         if mode == "base":
             prompt = base_prompt(problem)
         else:
-            prompt = structured_rag_prompt(problem, reference)
+            retrieved = retrieve(problem, k=3)
+            prompt = rag_prompt(problem, retrieved)
 
-        output = run_model(model_path, prompt)
-        gold = extract_final_answer(reference)
-        pred = extract_model_answer(output)
+        output = run_model(model, tokenizer, prompt)
+        scores = score_response(reference, output)
 
-        if debug and i == 0:
-            print("\nDEBUG EXAMPLE")
-            print("GOLD:", gold)
-            print("PRED:", pred)
-            print("RAW OUTPUT:\n", output[:800])
-            print("----")
+        if scores["answer_correct"]:
+            answer_correct += 1
+        if scores["explanation_correct"]:
+            explanation_correct += 1
+        if scores["answer_correct"] and scores["explanation_correct"]:
+            both_correct += 1
+        if scores["answer_correct"] and not scores["explanation_correct"]:
+            answer_only += 1
 
-        score = int(gold == pred) if gold is not None and pred is not None else 0
-        total_score += score
+    results = {
+        "answer_accuracy": answer_correct / total,
+        "explanation_accuracy": explanation_correct / total,
+        "both_correct": both_correct / total,
+        "answer_only": answer_only / total,
+        "total": total
+    }
 
-    accuracy = total_score / limit
-    print(f"Accuracy: {accuracy:.2f}")
-    return accuracy
+    print(f"Answer Accuracy: {results['answer_accuracy']:.4f}")
+    print(f"Explanation Accuracy: {results['explanation_accuracy']:.4f}")
+    print(f"Both Correct: {results['both_correct']:.4f}")
+    print(f"Answer Only (misleading): {results['answer_only']:.4f}")
+
+    return results
+
+
+def main():
+    all_results = {}
+    os.makedirs(os.path.dirname(RESULTS_PATH), exist_ok=True)
+
+    for model_name, model_id in MODELS.items():
+        print(f"\n{'='*50}")
+        print(f"Loading {model_name}")
+        print(f"{'='*50}")
+
+        model, tokenizer = load_model(model_id)
+        all_results[model_name] = {}
+
+        for split, path in DATA.items():
+            dataset = load_dataset(path)
+            all_results[model_name][split] = {}
+
+            for mode in ["base", "rag"]:
+                results = run_experiment(
+                    model, tokenizer, model_name,
+                    dataset, split, mode
+                )
+                all_results[model_name][split][mode] = results
+
+        with open(RESULTS_PATH, "w") as f:
+            json.dump(all_results, f, indent=2)
+        print(f"\nResults saved to {RESULTS_PATH}")
+
+    print("\n===== FINAL RESULTS =====")
+    for model_name, splits in all_results.items():
+        for split, modes in splits.items():
+            for mode, results in modes.items():
+                print(f"\n{model_name} | {split} | {mode}")
+                print(f"  Answer Accuracy: {results['answer_accuracy']:.4f}")
+                print(f"  Explanation Accuracy: {results['explanation_accuracy']:.4f}")
+                print(f"  Both Correct: {results['both_correct']:.4f}")
+                print(f"  Answer Only (misleading): {results['answer_only']:.4f}")
 
 
 if __name__ == "__main__":
-    dataset_easy = os.path.join(ROOT, "code", "data", "mathdial_bridge_hard.json")
-
-    print("===== Hard DATASET PILOT =====")
-
-    phi_base = run_experiment(dataset_easy, PHI_MODEL, mode="base", limit=5, debug=True)
-    phi_rag = run_experiment(dataset_easy, PHI_MODEL, mode="rag", limit=5)
-
-    tiny_base = run_experiment(dataset_easy, TINY_MODEL, mode="base", limit=5)
-    tiny_rag = run_experiment(dataset_easy, TINY_MODEL, mode="rag", limit=5)
-
-    print("\n===== PILOT SUMMARY =====")
-    print(f"Phi-3 Base: {phi_base:.2f}")
-    print(f"Phi-3 RAG: {phi_rag:.2f}")
-    print(f"TinyLlama Base: {tiny_base:.2f}")
-    print(f"TinyLlama RAG: {tiny_rag:.2f}")
+    main()
