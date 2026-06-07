@@ -8,7 +8,7 @@ from rag.retrieve import retrieve
 from evaluate import score_response
 
 MODELS = {
-    "Qwen4B": "Qwen/Qwen2.5-4B-Instruct"
+    "Qwen3_4B": "Qwen/Qwen3-4B"
     }
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
