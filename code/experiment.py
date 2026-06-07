@@ -8,9 +8,8 @@ from rag.retrieve import retrieve
 from evaluate import score_response
 
 MODELS = {
-    "Qwen3B": "Qwen/Qwen2.5-3B-Instruct",
-    "Gemma4B": "google/gemma-2-4b-it"
-}
+    "Qwen4B": "Qwen/Qwen2.5-4B-Instruct"
+    }
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
 DATA = {
