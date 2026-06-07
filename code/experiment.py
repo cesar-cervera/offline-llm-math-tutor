@@ -8,12 +8,8 @@ from rag.retrieve import retrieve
 from evaluate import score_response
 
 MODELS = {
-    "TinyLlama": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-    "Qwen1.5B": "Qwen/Qwen2.5-1.5B-Instruct",
-    "Gemma2B": "google/gemma-2-2b-it",
-    "Phi2": "microsoft/phi-2",
-    "Phi3Mini": "microsoft/Phi-3-mini-4k-instruct",
-    "Mistral7B": "mistralai/Mistral-7B-Instruct-v0.3"
+    "Qwen3B": "Qwen/Qwen2.5-3B-Instruct",
+    "Gemma4B": "google/gemma-2-4b-it"
 }
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
