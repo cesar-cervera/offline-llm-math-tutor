@@ -2,14 +2,10 @@ import json
 import os
 import sys
 from tqdm import tqdm
-from inference import load_model, run_model
+from inference import run_model, MODELS
 from prompts import base_prompt, rag_prompt
 from rag.retrieve import retrieve
 from evaluate import score_response
-
-MODELS = {
-    "Qwen3_4B": "Qwen/Qwen3-4B"
-    }
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
 DATA = {
@@ -24,7 +20,7 @@ def load_dataset(path):
         return json.load(f)
 
 
-def run_experiment(model, tokenizer, model_name, dataset, split, mode):
+def run_experiment(model_name, model_path, dataset, split, mode):
     answer_correct = 0
     explanation_correct = 0
     both_correct = 0
@@ -43,7 +39,7 @@ def run_experiment(model, tokenizer, model_name, dataset, split, mode):
             retrieved = retrieve(problem, k=3)
             prompt = rag_prompt(problem, retrieved)
 
-        output = run_model(model, tokenizer, prompt)
+        output = run_model(model_path, prompt)
         scores = score_response(reference, output)
 
         if scores["answer_correct"]:
@@ -72,15 +68,23 @@ def run_experiment(model, tokenizer, model_name, dataset, split, mode):
 
 
 def main():
-    all_results = {}
+    if os.path.exists(RESULTS_PATH):
+        with open(RESULTS_PATH, "r") as f:
+            all_results = json.load(f)
+    else:
+        all_results = {}
+
     os.makedirs(os.path.dirname(RESULTS_PATH), exist_ok=True)
 
-    for model_name, model_id in MODELS.items():
+    for model_name, model_path in MODELS.items():
+        if model_name in all_results:
+            print(f"\nSkipping {model_name}, already in results.")
+            continue
+
         print(f"\n{'='*50}")
-        print(f"Loading {model_name}")
+        print(f"Running {model_name}")
         print(f"{'='*50}")
 
-        model, tokenizer = load_model(model_id)
         all_results[model_name] = {}
 
         for split, path in DATA.items():
@@ -89,7 +93,7 @@ def main():
 
             for mode in ["base", "rag"]:
                 results = run_experiment(
-                    model, tokenizer, model_name,
+                    model_name, model_path,
                     dataset, split, mode
                 )
                 all_results[model_name][split][mode] = results
