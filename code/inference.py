@@ -42,6 +42,16 @@ def run_model(model_path, prompt, max_tokens=512, n_gpu_layers=35, timeout=120):
         process.kill()
         stdout, stderr = process.communicate()
 
+    # DEBUG: print raw output for first few calls
+    import os
+    debug_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "debug_output.txt")
+    if not os.path.exists(debug_file):
+        with open(debug_file, "w") as f:
+            f.write("STDOUT:\n")
+            f.write(stdout or "EMPTY")
+            f.write("\n\nSTDERR:\n")
+            f.write(stderr or "EMPTY")
+
     output = stdout or ""
 
     if prompt in output:
