@@ -10,6 +10,7 @@
 module load python
 module load cuda/12.1
 module load cmake
+export LD_LIBRARY_PATH=/afs/crc.nd.edu/x86_64_linux/c/cuda/12.1/lib64:$LD_LIBRARY_PATH
 source ~/thesis_env_new/bin/activate
 
 source ~/offline-llm-math-tutor/.env
