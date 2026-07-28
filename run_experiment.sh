@@ -8,6 +8,8 @@
 #$ -N thesis_experiment
 
 module load python
+module load cuda/12.1
+module load cmake
 source ~/thesis_env_new/bin/activate
 
 source ~/offline-llm-math-tutor/.env
