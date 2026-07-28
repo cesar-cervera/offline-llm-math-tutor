@@ -22,12 +22,15 @@ for repo, filename in MODELS:
         print(f"Already exists: {filename}")
         continue
     print(f"Downloading {filename}...")
-    subprocess.run([
-        "huggingface-cli", "download",
+    result = subprocess.run([
+        "hf", "download",
         repo, filename,
         "--local-dir", MODELS_DIR,
-        "--local-dir-use-symlinks", "False"
-    ])
-    print(f"Done: {filename}")
+    ], capture_output=True, text=True)
+    if os.path.exists(output_path):
+        print(f"Done: {filename}")
+    else:
+        print(f"FAILED: {filename}")
+        print(result.stderr)
 
 print("\nAll models downloaded.")
