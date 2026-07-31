@@ -2,7 +2,7 @@ import json
 import os
 import sys
 from tqdm import tqdm
-from inference import run_model, MODELS
+from inference import load_model, run_model, MODELS
 from prompts import base_prompt, rag_prompt
 from rag.retrieve import retrieve
 from evaluate import score_response
@@ -20,7 +20,7 @@ def load_dataset(path):
         return json.load(f)
 
 
-def run_experiment(model_name, model_path, dataset, split, mode):
+def run_experiment(model, tokenizer, model_name, dataset, split, mode):
     answer_correct = 0
     explanation_correct = 0
     both_correct = 0
@@ -39,7 +39,7 @@ def run_experiment(model_name, model_path, dataset, split, mode):
             retrieved = retrieve(problem, k=3)
             prompt = rag_prompt(problem, retrieved)
 
-        output = run_model(model_path, prompt)
+        output = run_model(model, tokenizer, prompt)
         scores = score_response(reference, output)
 
         if scores["answer_correct"]:
@@ -76,15 +76,16 @@ def main():
 
     os.makedirs(os.path.dirname(RESULTS_PATH), exist_ok=True)
 
-    for model_name, model_path in MODELS.items():
+    for model_name, model_id in MODELS.items():
         if model_name in all_results:
             print(f"\nSkipping {model_name}, already in results.")
             continue
 
         print(f"\n{'='*50}")
-        print(f"Running {model_name}")
+        print(f"Loading {model_name}")
         print(f"{'='*50}")
 
+        model, tokenizer = load_model(model_id)
         all_results[model_name] = {}
 
         for split, path in DATA.items():
@@ -93,7 +94,7 @@ def main():
 
             for mode in ["base", "rag"]:
                 results = run_experiment(
-                    model_name, model_path,
+                    model, tokenizer, model_name,
                     dataset, split, mode
                 )
                 all_results[model_name][split][mode] = results
@@ -101,6 +102,10 @@ def main():
         with open(RESULTS_PATH, "w") as f:
             json.dump(all_results, f, indent=2)
         print(f"\nResults saved to {RESULTS_PATH}")
+
+        del model, tokenizer
+        import torch
+        torch.cuda.empty_cache()
 
     print("\n===== FINAL RESULTS =====")
     for model_name, splits in all_results.items():

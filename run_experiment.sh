@@ -9,25 +9,12 @@
 
 module load python
 module load cuda/12.1
-module load cmake
 export LD_LIBRARY_PATH=/afs/crc.nd.edu/x86_64_linux/c/cuda/12.1/lib64:$LD_LIBRARY_PATH
 source ~/thesis_env_new/bin/activate
 
 source ~/offline-llm-math-tutor/.env
 
 cd ~/offline-llm-math-tutor
-
-# Build llama.cpp if not already built
-if [ ! -f "llama.cpp/build/bin/llama-cli" ]; then
-    echo "Building llama.cpp..."
-    cd llama.cpp
-    cmake -B build -DGGML_CUDA=ON
-    cmake --build build --config Release -j4
-    cd ..
-fi
-
-# Download models if not already downloaded
-python code/download_models.py
 
 # Build FAISS index if not already built
 if [ ! -f "index/faiss_index.bin" ]; then

@@ -13,8 +13,8 @@ MODELS = [
     ("Qwen/Qwen2.5-3B-Instruct-GGUF", "qwen2.5-3b-instruct-q4_k_m.gguf"),
     ("microsoft/Phi-3-mini-4k-instruct-gguf", "Phi-3-mini-4k-instruct-q4.gguf"),
     ("bartowski/Qwen_Qwen3-4B-GGUF", "Qwen_Qwen3-4B-Q4_K_M.gguf"),
-    ("TheBloke/Mistral-7B-Instruct-v0.3-GGUF", "mistral-7b-instruct-v0.3.Q4_K_M.gguf"),
-]
+    ("bartowski/Mistral-7B-Instruct-v0.3-GGUF", "Mistral-7B-Instruct-v0.3-Q4_K_M.gguf"),    
+    ]
 
 for repo, filename in MODELS:
     output_path = os.path.join(MODELS_DIR, filename)
