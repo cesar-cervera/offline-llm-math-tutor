@@ -36,7 +36,7 @@ def load_model(model_name):
     return model, tokenizer
 
 
-def run_model(model, tokenizer, prompt, max_new_tokens=512):
+def run_model(model, tokenizer, prompt, max_new_tokens=256):
     inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
 
     with torch.no_grad():

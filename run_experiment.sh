@@ -5,6 +5,7 @@
 #$ -pe smp 4
 #$ -q gpu
 #$ -l gpu=1
+#$ -l hostname="ta-a6k*"
 #$ -N thesis_experiment
 
 module load python
