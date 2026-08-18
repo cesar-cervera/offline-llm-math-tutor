@@ -16,15 +16,20 @@ with open(PROBLEMS_PATH, "r") as f:
     solutions = data["solutions"]
 
 
-def retrieve(query, k=3):
+def retrieve(query, k=3, exclude=None):
     embedding = model.encode([query])
     embedding = np.array(embedding).astype("float32")
-    distances, indices = index.search(embedding, k)
-    
+    search_k = k + 1 if exclude else k
+    distances, indices = index.search(embedding, search_k)
+
     results = []
     for idx in indices[0]:
+        if exclude is not None and problems[idx].strip() == exclude.strip():
+            continue
         results.append({
             "problem": problems[idx],
             "solution": solutions[idx]
         })
+        if len(results) == k:
+            break
     return results

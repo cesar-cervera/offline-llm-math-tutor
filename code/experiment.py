@@ -36,7 +36,7 @@ def run_experiment(model, tokenizer, model_name, dataset, split, mode):
         if mode == "base":
             prompt = base_prompt(problem)
         else:
-            retrieved = retrieve(problem, k=3)
+            retrieved = retrieve(problem, k=3, exclude=problem)
             prompt = rag_prompt(problem, retrieved)
 
         output = run_model(model, tokenizer, prompt)
